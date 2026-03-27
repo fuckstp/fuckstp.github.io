@@ -37,17 +37,13 @@ anchorjs: true                          # if you want to customize anchor. check
 
 
 
-# Gems
-# from PR#40, to support local preview for Jekyll 3.0
-gems: [jekyll-paginate]
+# Plugins
+plugins: [jekyll-paginate]
 
 
 
 
 # Markdown settings
-# replace redcarpet to kramdown,
-# although redcarpet can auto highlight code, the lack of header-id make the catalog impossible, so I switch to kramdown
-# document: http://jekyllrb.com/docs/configuration/#kramdown
 markdown: kramdown
 highlighter: rouge
 kramdown:
@@ -79,7 +75,6 @@ ba_track_id: b50bf2b12b5338a1845e33832976fd68
 # Google Analytics
 ga_track_id: 'UA-113066427-2'            # Format: UA-xxxxxx-xx
 ga_domain: auto               # 默认的是 auto, 这里我是自定义了的域名，你如果没有自己的域名，需要改成auto
-
 
 
 
