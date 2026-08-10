@@ -3,7 +3,7 @@ title: Route Reflect
 SEOTitle: Route Reflect | Network Engineering, Data Center & Infrastructure
 header-img: img/post-bg-desk.png
 email: fuckstp@protonmail.com
-description: "no stp no trouble."
+description: "Practical notes on network engineering, data centers, automation, troubleshooting, and infrastructure."
 keyword: "CCIE,CCNA,CCNP,CISCO,Network,engineer,802.1d"
 url: "https://blog.routereflect.com"          # your host, for absolute URL
 baseurl: ""      # for example, '/blog' if your blog hosted on 'host/blog'
@@ -11,7 +11,7 @@ github_repo: "https://github.com/fuckstp/fuckstp.github.io" # you code repositor
 
 # Sidebar settings
 sidebar: true                           # whether or not using Sidebar.
-sidebar-about-description: "Bulid today with tomorrow in mind."
+sidebar-about-description: "Networks, Systems, and the Paths We Choose."
 sidebar-avatar: /img/about-BY-gentle.jpg      # use absolute URL, seeing it's used in both `/` and `/about/`
 
 
@@ -85,9 +85,11 @@ featured-condition-size: 1              # 相同标签数量大于这个数，�
 
 
 
+
 # Progressive Web Apps
 chrome-tab-theme-color: "#000000"
 service-worker: true
+
 
 
 
