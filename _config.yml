@@ -5,7 +5,7 @@ header-img: img/post-bg-desk.png
 email: fuckstp@protonmail.com
 description: "no stp no trouble."
 keyword: "CCIE,CCNA,CCNP,CISCO,Network,engineer,802.1d"
-url: "https://blog.fuckstp.com/"          # your host, for absolute URL
+url: "https://blog.routereflect.com"          # your host, for absolute URL
 baseurl: ""      # for example, '/blog' if your blog hosted on 'host/blog'
 github_repo: "https://github.com/fuckstp/fuckstp.github.io" # you code repository
 
