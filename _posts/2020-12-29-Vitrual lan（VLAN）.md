@@ -1,4 +1,8 @@
 ---
+lang: zh-CN
+translation_key: vlan-fundamentals
+translation_zh: /2020/12/29/Vitrual-lan-VLAN/
+translation_en: /en/2020/12/29/vlan/
 layout:     post
 title:      虚拟局域网（VLAN）
 subtitle:   2020年都要过完了，我还没找到可以跳槽的工作。

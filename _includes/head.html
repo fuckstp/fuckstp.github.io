@@ -52,4 +52,9 @@
 
     <!-- ga & ba script hoook -->
     <script></script>
+{% if page.translation_key %}
+    <link rel="alternate" hreflang="zh-CN" href="{{ page.translation_zh | absolute_url }}">
+    <link rel="alternate" hreflang="en" href="{{ page.translation_en | absolute_url }}">
+    <link rel="stylesheet" href="{{ '/css/article-language.css' | relative_url }}">
+    {% endif %}
 </head>
