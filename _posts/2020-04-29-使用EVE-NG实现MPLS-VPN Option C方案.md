@@ -12,22 +12,21 @@ tags:
 ---
 
 ## 使用EVE-NG实现MPLS-VPN Option C 方案
->起因是《segment routing 卷一》看到了MPLS-BGP控制层面有点糊涂了，大概是考完试就没有碰MPLS的原因，把大部分的理论都忘光光，然后把Option A、B、C重新复习了一边。
+> 起因是读《Segment Routing 卷一》时，看到 MPLS-BGP 控制平面有点糊涂了，大概是考完试就没有碰MPLS的原因，把大部分的理论都忘光光，然后把Option A、B、C重新复习了一遍。
 
+## 1. 前言
+MPLS-VPN Option C 方案的优缺点这里就不提了，直接在实验里回顾一下 MPLS 和跨域转发的过程。
 
-#### 1.前言
-MPLS-VPN Option C 方案的优缺点这里就不提了，让我们直接实验的过程中回想起MPLS和跨域的工作方法吧。
-
-#### 2.实验环境
+## 2. 实验环境
 1. 模拟器 EVE-NG社区版 （[下载地址](https://t.co/uCYLdYerhL?amp=1 "下载地址")）
 
-#### 3.镜像
+## 3. 镜像
 1. vios-adventerprisek9-m
 2. 镜像系统版本Version 15.7(3)M3, RELEASE SOFTWARE (fc2)
 
 镜像资源可以从这搜寻，按需下载并导入：[链接](http://www.emulatedlab.com/forum.php?mod=viewthread&tid=90 "链接")
 
-#### 4.拓扑图
+## 4. 拓扑图
 
 ![topology](https://ktpepq.bn.files.1drv.com/y4mAjWfVtyzYiQmsLlyVp_LHsC_S-iWcxGgbvWm0xptnnD0DVzD7G_muswqq1qtNnHI_jnlSYXDlWhLSpnHe1q-Kc1aI_3g5GR1HBUcwTB6f6wbaykVT5mg5FPZcB5-s7AomgbebeqenKINxUrPn6YxZkGfHEGv-FHXLgi6A2BB7QMAuwV9e71vkCvTmQT0PYvbky1F-SDrIIjzqvSGYQW2tQ/topology.PNG?psid=1)
 
@@ -35,21 +34,21 @@ MPLS-VPN Option C 方案的优缺点这里就不提了，让我们直接实验�
 
 角色定义
 
-PE：每个AS域内与外部客户所连接的路由器，类如vISO2、vIOS7；
+PE：每个AS域内与外部客户所连接的路由器，例如vIOS2、vIOS7；
 
-P：不参与MPLS-VPN转发的路由器，类如vIOS3~6；
+P：不参与MPLS-VPN转发的路由器，例如vIOS3~6；
 
-ASBR：和其他AS域互联的路由器，类如：vIOS4、vIOS5
+ASBR：和其他AS域互联的路由器，例如vIOS4、vIOS5
 
-CE：代表客户的路由器，类如vIOS1、vIOS8；
+CE：代表客户的路由器，例如vIOS1、vIOS8；
 
 接口及命名规则
 
-每个vIOS（路由器）采用R+数字的命名方法，即vIOS1=R1、vIOS2=R2，诸如类推；
+每个vIOS（路由器）采用R+数字的命名方法，即vIOS1=R1、vIOS2=R2，以此类推；
 
-每个路由器建立loopback 0接口，并且ip格式为1.1.1.1/32，R2即2.2.2.2/32，诸如类推；
+每个路由器建立loopback 0接口，并且ip格式为1.1.1.1/32，R2即2.2.2.2/32，以此类推；
 
-每个路由器互联接口IP根据其名词来决定，即R1和R2互联地址是12.1.1.1/24和12.1.1.2/24，R2和R3的互联地址为23.1.1.2/24和23.1.1.3/24，诸如类推。
+每个路由器互联接口的 IP 地址根据路由器编号来分配，即R1和R2互联地址是12.1.1.1/24和12.1.1.2/24，R2和R3的互联地址为23.1.1.2/24和23.1.1.3/24，以此类推。
 
 路由设定
 
@@ -57,15 +56,13 @@ CE：代表客户的路由器，类如vIOS1、vIOS8；
 
 而与CE路由器则使用EBGP互联。
 
+## 5. 配置过程
 
+### 5.1. 接口
 
-#### 5.配置过程
+这里略过
 
-##### 5.1接口
-
-这里略高
-
-##### 5.2IGP/LDP
+### 5.2. IGP/LDP
 
 这里也略过，毕竟都谈到Option C了，BGP作为TCP路由协议需要依靠IGP来作为底层打通可达才能建立邻居，这一点你该不会不知道吧。
 
@@ -81,7 +78,7 @@ interface [接口]
  mpls ip
 ```
 
-##### 5.3VRF
+### 5.3. VRF
 
 两台PE需要建立VRF来接收CE发过来的路由，打上标签后形成VPNV4路由并装入VRF 路由表。fuckstp是VRF的名字，rd10:10 用来区分CE发过来的私网路由，route-target（RT）则用来区分从PE发过来的vpnv4路由，这里由于是代表同一个客户的两个分支点之间的路由，所以RD\RT都是一样。
 
@@ -102,9 +99,9 @@ interface GigabitEthernet0/0
 !
 ```
 
-##### 5.4BGP
+### 5.4. BGP
 
-CE需要发送路由到PE，方法有可以选择静态、IGP、BGP，这里选用BGP来和PE建立邻居发送路由
+CE需要发送路由到PE，可以选择静态路由、IGP 或 BGP，这里选用BGP来和PE建立邻居发送路由
 
 ```
 R1
@@ -155,7 +152,7 @@ router bgp 200
  exit-address-family
 ```
 
-PE路由器（R2、R7）先和CE路由器（R1、R8）建立基于VRF的iBGP邻居，接收客户发过来路由，再互相建立VPNv4邻居来发送VPNv4路由，通过RT（router-tager）来区分客户，该例子中由于是相同客户所以选择一样的RT。
+PE路由器（R2、R7）先和CE路由器（R1、R8）建立基于 VRF 的 eBGP 邻居，接收客户发过来的路由，再互相建立VPNv4邻居来发送VPNv4路由，通过RT（Route Target）来区分客户，该例子中由于是相同客户所以选择一样的RT。
 
 ```Cisco
 R2
@@ -193,7 +190,7 @@ router bgp 200
  exit-address-family
 ```
 
-##### 5.5验证配置
+### 5.5. 验证配置
 
 使用下面的命令来验证邻居是否建立成功、路由表是否有路由
 
@@ -239,7 +236,7 @@ Route Distinguisher: 10:10 (default for vrf fuckstp)
 你可以看到路由表内装有R8的环回口路由，因为我们刚刚在R8上直接redistribution connect，会把环回口也包括在内分发到BGP，并且通过vpnv4发送到R2上，相反R7也应该如此。
 ```
 
-来再看看两个CE是否收到了对方的路由，细心的可以留意到双方都有对方的环回口路由和出口路由。
+再来看看两个CE是否收到了对方的路由，细心的可以留意到双方都有对方的环回口路由和出口路由。
 
 ```
 R1
@@ -290,7 +287,7 @@ C        78.1.1.0/24 is directly connected, GigabitEthernet0/0
 L        78.1.1.8/32 is directly connected, GigabitEthernet0/0
 ```
 
-#### 6.测试连通性
+## 6. 测试连通性
 
 Ping和tracert一下~
 
@@ -302,9 +299,9 @@ Ping和tracert一下~
 
 标签的分配（R1视角）：
 
-1. 内部标签“25”，由对方PE路由器分配（）并通过VPNv4传递到我方PE路由器上。
+1. 内部标签“25”，由对端 PE 路由器分配并通过VPNv4传递到我方PE路由器上。
 2. 外部标签由本地分配，是目的地的下一跳路由IP的标签，在LDP邻居中互相传递。
 
-由于两个AS之间建立的是EBGP邻居、传递EBGP路由，并且LDP不会为EBGP路由通过标签，所以需要使用Send-labels特性使其能够强制传递。本实验的例子中，R1去往目的地8.8.8.8的下一跳地址是7.7.7.7，在两个AS边界的路由器上传递的时候若没启用该特性会导致LSP路径中断而使MPLS网络断开。
+由于两个AS之间建立的是EBGP邻居、传递EBGP路由，并且LDP不会为 eBGP 路由分发标签，所以需要使用Send-labels特性使其能够强制传递。本实验的例子中，R1去往目的地8.8.8.8的下一跳地址是7.7.7.7，在两个AS边界的路由器上传递的时候若没启用该特性会导致LSP路径中断而使MPLS网络断开。
 
 我希望这样表述能让你看懂，Option C的重点就是如何使对方的ASBR路由器能够得知有关目的地的下一跳路由的标签，从而使整条转发路径的LSP能够建立起来。

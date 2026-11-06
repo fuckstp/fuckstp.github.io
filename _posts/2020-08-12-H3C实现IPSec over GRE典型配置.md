@@ -20,9 +20,9 @@ IPSec over GRE 指使用GRE对使用IPSec封装的数据包进行封装，IPSec 
 
 你可以认为IPSec over GRE的安全性是不全面的，因为它只会加密被ACL所匹配的流量，隧道的建立过程没有加密，没被匹配到的流量不会被加密。
 
-## 0.实验环境
+## 0. 实验环境
 
-Router A和Router B之间建立GRE隧道，Router A和Router B下的PC网段间流量走GRE，并使用IPSec对在GRE中对流量进行加密，Route C则模拟在ISP侧的设备。
+Router A和Router B之间建立GRE隧道，Router A和Router B下的PC网段间流量走GRE，并用 IPsec 保护经过 GRE 隧道的指定流量，Router C 模拟 ISP 侧设备。
 
 模拟器：H3C官方模拟器HCL，即H3C Cloud Lab
 
@@ -32,13 +32,11 @@ Router A和Router B之间建立GRE隧道，Router A和Router B下的PC网段间�
 
 ![image-20200812151037409](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/sdn/image-20200812151037409.png)
 
-## 1.基础配置
+## 1. 基础配置
 
 A和B之间使用静态路由使出口路由可达，并且先起个OSPF进程，使用环回口作为Router-id，因为最后它们要在tunnel上实现OSPF的互联。
 
-
-
-Route A：
+Router A：
 
 ```
 #
@@ -63,7 +61,7 @@ interface GigabitEthernet0/1
 #
 ```
 
-Route C：
+Router C：
 
 ```
 
@@ -79,7 +77,7 @@ interface GigabitEthernet0/1
 #
 ```
 
-Route B：
+Router B：
 
 ```
 #
@@ -104,13 +102,11 @@ interface GigabitEthernet0/1
 #
 ```
 
-
-
-## 2.GRE tunnel 配置
+## 2. GRE tunnel 配置
 
 模拟器默认设备系统版本都是V7，需要在创建Tunnel的时候就指定为GRE隧道。Tunnel要将源设定为自己的出口IP，目的是对端的设备的出口IP，以A为视角的话，Tunnel source 就是它的出口IP，destination是B的出口IP，反过来也是这样。顺便将OSPF网络设定成P2P模式，方便快速建立邻居。
 
-Route A：
+Router A：
 
 ```
 
@@ -123,7 +119,7 @@ interface Tunnel0 mode gre
 
 ```
 
-Route B：
+Router B：
 
 ```
 
@@ -136,15 +132,11 @@ interface Tunnel0 mode gre
 
 ```
 
+## 3. IPSec 配置
 
+两台设备都需要创建ACL抓取需要加密的流量，不然不会触发IPSec加密行为。同时需要注意transform-set的加密和认证参数需要一致， V7设备预共享密钥的配置需要在ike keychain中配置，不同于V5设备。建议在实际生产环境中操作的时候最好直接使用复制粘贴来配置IPSec policy。
 
-## 3.IPSec 配置
-
-两台设备都需要创建ACL抓取需要加密的流量，不然不会触发IPSec加密行为。同时需要注意transform-set的加密和认真参数需要一支， V7设备预共享密钥的配置需要在ike keychain中配置，不同于V5设备。建议在实际生产环境中操作的时候最好直接使用复制粘贴来配置IPSec policy。
-
-
-
-Route A：
+Router A：
 
 ```
 acl advanced 3000
@@ -166,7 +158,7 @@ ike keychain 1
 
 ```
 
-Route B：
+Router B：
 
 ```
 acl advanced 3000
@@ -188,20 +180,18 @@ ike keychain 1
 
 ```
 
-
-
-## 4.启用IPSec
+## 4. 启用IPSec
 
 最后，我们只要在tunnel口下把在第三步创建的IPSec policy 调用出来就可以了。
 
-Route A/B：
+Router A/B：
 
 ```
 interface Tunnel0 mode gre
  ipsec apply policy 123
 ```
 
-## 5.验证结果
+## 5. 验证结果
 
 我们直接ping下，会发现IPSec第一个包都会超时，这是正常的，只要通了那就代表配置没错了。
 
@@ -298,17 +288,15 @@ Output: 1699 packets, 120360 bytes, 0 drops
 
 ```
 
-
-
-GRE封装后，依然能抓包软件识别出是ICMP报文：
+GRE封装后，抓包软件仍能识别出里面的 ICMP 报文：
 
 ![image-20200821121125152](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/snd/image-20200821121125152.png)
 
-GRE+IPSec封装后，由于被加密，被识别成ESP。：
+启用 IPsec 后，抓包显示的是 ESP。
 
 ![image-20200821121147484](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/snd/image-20200821121147484.png)
 
-## 6.改用GRE over IPSec方案
+## 6. 改用GRE over IPSec方案
 
 GRE over IPSec技术是使用IPSec对已经被GRE封装的数据包进行封装。GRE over IPSec在物理接口上实现IPSec加密。系统检测需要在物理接口上加密的GRE数据流（配置一个ACL，以匹配两个网关之间的GRE数据流）。这样一来，所有通过GRE隧道传输的数据流都受到IPSec的保护。GRE隧道在设置时也受到IPSec的保护。
 
@@ -316,11 +304,9 @@ GRE over IPSec支持隧道和传输模式下的封装。在隧道模式下，IPS
 
 也就是说，只需要在原本的方案上稍微修改下pre-shared-key和remote-address的地址为物理接口IP，并且在物理接口上调用，那就变成GRE先封装，IPSec后封装的方案。
 
-### 6.1配置修改
+### 6.1. 配置修改
 
-
-
-Route A：
+Router A：
 
 ```
 acl advanced 3000
@@ -343,7 +329,7 @@ ipsec apply policy 123
 
 ```
 
-Route B：
+Router B：
 
 ```
 acl advanced 3000
@@ -467,7 +453,6 @@ Interface: GigabitEthernet0/0
 
 ```
 
-IPSec+GRE的封装后，抓包除了能看出源目IP和使用了ESP加密外，什么也看不到：
+改用 GRE over IPsec 后，抓包能看到外层源 IP、目的 IP 和 ESP，受保护的内层内容无法直接解读。
 
 ![image-20200821154504018](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/snd/image-20200821154504018.png)
-

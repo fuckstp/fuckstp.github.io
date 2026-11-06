@@ -36,7 +36,7 @@ I put all three interfaces in `10.10.10.0/24` and added `ip route replace 224.0.
 
 ## 3. Get unicast working first
 
-I pinged `.21` and `.22` from the source. Then I started a UDP listener on FH-1 and sent 15 seconds of traffic directly to it. Pretty standard stuff, but now I have a baseline if the multicast test gives me nothing.
+I pinged `10.10.10.21` and `10.10.10.22` from the source. Then I started a UDP listener on FH-1 and sent 15 seconds of traffic directly to it. Pretty standard stuff, but now I have a baseline if the multicast test gives me nothing.
 
 ```sh
 # FH-1
@@ -48,7 +48,7 @@ iperf -c 10.10.10.21 -u -B 10.10.10.10 -p 5000 -b 64k -l 256 -t 15
 
 ## 4. Send the same feed to both hosts
 
-I stopped the unicast listener with Ctrl+C, then started the multicast listener on both hosts. The publisher sends to the group this time. Look at the sender command and see if you can find either feed handler's IP in it.
+I stopped the unicast listener with Ctrl+C, then started the multicast listener on both hosts. The publisher sends to the group this time. Look at the sender's command and see if you can find either feed handler's IP in it.
 
 ```sh
 # FH-1 and FH-2, in separate consoles
@@ -68,11 +68,11 @@ I ran this on a receiver while the source was sending. If you're following along
 tcpdump -ni eth0 -e -vv -c 10 'udp and dst host 239.10.10.1 and dst port 5000'
 ```
 
-The source IP is `.10`, the destination IP is `239.10.10.1`, and `5000` is the UDP destination port. Look one layer down and the destination MAC is `01:00:5e:0a:0a:01`.
+The source IP is `10.10.10.10`, the destination IP is `239.10.10.1`, and `5000` is the UDP destination port. Look one layer down and the destination MAC is `01:00:5e:0a:0a:01`.
 
 Here's the bit I had to work out again. What MAC does `239.138.10.1` map to? Same one. The mapping only uses the low 23 bits of the group address. The bit that changes between `10` and `138` in the second octet is outside those 23 bits. When I filter a capture for a specific feed, I check the destination IP as well as the MAC.
 
-I sent the stream once with `-T 1` and again with `-T 16`. Compare the two captures and the TTL changes with the sender setting. Compare the two links within the same run and it stays the same. There's only a Layer 2 switch in between.
+I sent the stream once with `-T 1` and again with `-T 16`. Compare the two captures and the TTL changes with the sender setting. Compare the two links within the same run and the TTL stays the same. There's only a Layer 2 switch in between.
 
 ## 6. Same group, wrong port
 
