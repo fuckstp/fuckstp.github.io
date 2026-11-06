@@ -11,73 +11,53 @@ tags:
     - 不学不行系列
 ---
 
+## 前言
 
+虚拟局域网，英文是 Virtual Local Area Network，下面简称 VLAN。以这次实验的 Cisco 交换机为例，默认的二层接入口都在 VLAN 1。我把不同端口分到不同 VLAN，就像把一台交换机划成了几台逻辑交换机。每个 VLAN 是独立的二层广播域。交换机按 VLAN 转发二层帧，跨 VLAN 通信则要靠三层设备。
 
+802.1Q Tag 的作用是在线路上标识帧属于哪个 VLAN。比如一条 Trunk 同时承载 VLAN 10 和 20，对端就需要知道收到的帧该归到哪个 VLAN。普通 Access 口连 PC 时，线上通常没有标签，交换机按端口的配置归类。早期 Cisco 还有私有的 ISL 封装，这篇实验用的是 IEEE 802.1Q。
 
+## VLAN 的作用
 
+VLAN 除了把交换机在逻辑上划成多个广播域，我平常还会拿它做这几件事。
 
+1. **隔离业务。** 不同 VLAN 的主机不能直接做二层通信。开了跨 VLAN 路由以后，哪些业务能互访，还要看 ACL 或防火墙策略。
+2. **方便管理。** 可以按业务或部门分配 VLAN，排障时也更容易确定流量应该出现在哪里。
+3. **缩小泛洪范围。** 广播和二层泛洪留在各自的 VLAN 内。同一个 VLAN 仍然可能发生广播风暴，VLAN 划分能限制它的影响范围。
 
-### 前言
+## 802.1Q 标签与 VLAN ID
 
-虚拟局域网，英文Virtual lan，我们一般都叫做“VLAN”，所以下文我会统称为VLAN。一台交换机在默认情况下，所有端口都属于一个VLAN，我们通过VLAN技术可以将特定端口分配到特定的VLAN中，可以理解成交换机被分虚拟化成多个 了。有书也会说VLAN是一种很基本的网络虚拟化功能，因为它的确使交换机在逻辑上被分割成了多个，相同的VLAN的端口就属于一台被分割出来的交换机，它们不同VLAN的端口之间是无法通信的。
+802.1Q 的 4 字节标签插在以太网帧的源 MAC 地址之后。
 
-VLAN的基本实现原理是通过在数据包中打上VLAN Tag，使得无论是单播、组播、广播都只会在配置了相同VLAN的端口中转发。这种技术有两种标准，一种是思科私有的“ISL”，另一种是IEEE定义的802.1Q。在802.1Q是主流的今天，ISL已经是昨日黄花，你不必去学习它。
+| 字段 | 长度 | 含义 |
+| --- | --- | --- |
+| TPID | 16 bit | Tag Protocol Identifier，标识标签类型。常见的 802.1Q C-Tag 用 `0x8100`。 |
+| PCP | 3 bit | Priority Code Point，表示二层优先级。 |
+| DEI | 1 bit | Drop Eligible Indicator，表示拥塞时是否可优先丢弃。旧资料里同一位置常写 CFI。 |
+| VID | 12 bit | VLAN Identifier，用来标识 VLAN。 |
 
-### VLAN的作用
+VID 有 12 bit，字段能表示 `0–4095`。以 Cisco Catalyst 的常见划分为例：
 
-VLAN除了 将交换机逻辑分割成多台，它还是实现了：
+| VID | 用途 |
+| --- | --- |
+| `0` | 优先级标签，用来携带优先级信息，不表示帧属于 VLAN 0。 |
+| `1` | 这类 Cisco 交换机的默认 VLAN，可以使用，不能删除。 |
+| `2–1001` | 普通范围内通常可供用户配置的以太网 VLAN。 |
+| `1002–1005` | 普通范围内为 FDDI 和 Token Ring 保留的 Cisco 默认 VLAN。 |
+| `1006–4094` | 扩展范围。哪些 ID 可用、能建多少个 VLAN，要看平台、软件和 VTP 模式；设备也可能占用个别 ID。 |
+| `4095` | 保留值。 |
 
-1.更安全，将有敏感数据的部门划分到不同的VLAN中，实现简单的隔离。
+[参考 Cisco 的标签字段说明](https://learningnetwork.cisco.com/s/article/implement-and-troubleshoot-trunking)和 [VLAN 范围说明](https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst3750x_3560x/software/release/15-2_1_e/configuration/guide/scg3750x/swvlan.html)。
 
-2.更方便，管理人员通过分割不同的VLAN来给不同的业务、部门，方便管理员管理。
+## 配置 VLAN
 
-3.更效率，分割的VLAN会阻隔其他VLAN的广播泛洪，减少不必要的流量从而提高性能。
-
-4.抑制广播风暴，分割的VLAN如同第3点所讲，还能抑制广播风暴的影响，由于阻隔了广播泛洪，可以防止网络收到大量的广播报文影响。
-
-这是802.1Q格式，它被插入到源mac地址后：
-
-|  TPID   |  PRI   |  CFI   | VLAN ID |
-| :-----: | :----: | :----: | :-----: |
-| 2 Bytes | 3 Bits | 1 Bits | 12 Bits |
-
-VLAN标签各字段含义：
-
-TPID：Tag Protocol Identifier（标签协议标识符），表示数据帧类型。
-
-PRI：Priority，表示数据帧的802.1p优先级。
-
-CFI：Canonical Format Indicator（标准格式指示位），用于兼容以太网和令牌环网。
-
-VLAN ID：VLAN ID，表示该数据帧所属VLAN的编号。
-
-这四个字段，我们初学者只要知道VLAN ID就行了，12个Bit限制了它的数量范围：0~4095。而VLAN ID中又被区分出来用于不同的地方，它们的范围和用途看这里：
-
-1.VLAN 0 和 VLAN 4095 仅限系统使用，用户是无法查看的。
-
-2.VLAN 1 正常，是Cisco的默认端口VLAN，用户可以使用但是无法删除。
-
-3.VLAN 2 ~ 1001 正常，用于Ethernet的VLAN，用户可以创建和删除。
-
-4.VLAN 1002 ~ 1005 正常，用于FDDI和令牌环的Cisco默认vlan，用户不能删除。
-
-5.VLAN 1006 ~ 1024 保留，仅仅限于系统使用，用户不能查看和使用
-
-6.VLAN 1025 ~ 4094 扩展，用于Ethernet的VLAN，用户可以创建和删除。
-
-### 配置 VLAN
-
-VLAN的配置很简单，这是配置的步骤：
-
-1.创建VLAN本身
-
-2.将特定端口划入到特定的VLAN
-
-尽管VLAN的划分方法还有很多种类，但是这里我们只根据端口来配置划分，我们来根据这图划分对应的VLAN。
+这次按端口划分 VLAN。我先在交换机上创建 VLAN 10 和 VLAN 20，再把接入端口划到对应的 VLAN。下面是实验拓扑。
 
 <img src="https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20201230172508037.png" alt="image-20201230172508037" style="zoom:67%;" />
 
-按照步骤，首先在交换机创建VLAN
+### 1. 创建 VLAN
+
+先在交换机上创建 VLAN 10 和 VLAN 20。
 
 ```
 Switch(config)#vlan 10
@@ -88,7 +68,7 @@ Switch(config-vlan)#name red
 Switch(config-vlan)#exit
 ```
 
-创建完成后，可以查看到现有的VLAN
+创建完成后，用 `show vlan` 检查两个 VLAN 是否存在。
 
 ```
 Switch#show vlan 
@@ -104,7 +84,9 @@ VLAN Name                             Status    Ports
 1005 trnet-default                    act/unsup 
 ```
 
-根据图所示，将接口e0/0、e0/2划入到VLAN 10，接口e0/1、e0/3划入到VLAN 20
+### 2. 分配 Access 端口
+
+按拓扑，把 `Ethernet0/0` 和 `Ethernet0/2` 划入 VLAN 10，把 `Ethernet0/1` 和 `Ethernet0/3` 划入 VLAN 20。
 
 ```
 VLAN 10
@@ -134,45 +116,43 @@ Switch(config-if)#no shu
 Switch(config-if)#exit
 ```
 
-完成后，使用如下图的命令可以确认配置结果
+配置完成后，再用 `show vlan` 核对各端口归属。
 
 <img src="https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20201230173123385.png" alt="image-20201230173123385" style="zoom:67%;" />
 
+### 3. 验证 VLAN 隔离
 
+这次我故意给四台主机都配上 `10.1.1.0/24` 里的地址。这样主机会把对方当作同网段邻居，直接发 ARP，正好可以观察 VLAN 对广播的隔离。
 
-这时候，如果我们给上图两个VLAN内的4台配置上分别一个网段的IP：
+| 主机 | IP 地址 |
+| --- | --- |
+| VPC1 | `10.1.1.1/24` |
+| VPC2 | `10.1.1.2/24` |
+| VPC3 | `10.1.1.3/24` |
+| VPC4 | `10.1.1.4/24` |
 
-VPC1:10.1.1.1/24
+我用 VPC1 分别 ping VPC3 和 VPC2。原抓包图已遗失，下面是当时笔记记录的实验现象。
 
-VPC2:10.1.1.2/24
+| 测试 | VLAN 关系 | 实验观察 |
+| --- | --- | --- |
+| VPC1 → VPC3（`10.1.1.3`） | 同属 VLAN 10 | ARP 能解析到对端 MAC，ICMP 正常往返。 |
+| VPC1 → VPC2（`10.1.1.2`） | 分属 VLAN 10 和 VLAN 20 | VPC1 多次发送 ARP Request，未收到 VPC2 的回复，ping 不通。 |
 
-VPC3:10.1.1.3/24
+同一个 IP 子网里的两台主机，放到不同 VLAN 后，ARP 广播也跨不过去。从逻辑上看，拓扑就像下面这样。
 
-VPC4:10.1.1.4/24
+![VLAN 10 与 VLAN 20 的逻辑隔离](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20201230181141544.png)
 
-然后使用VPC 1 发起Ping到VPC 3，网络是正常的，ARP双方都有询问，并且ICMP正常的交互：
+这四台主机虽然都配在同一个 IP 子网里，但交换机上的四个端口分属两个广播域。VPC1 发出的 ARP Request 留在 VLAN 10，VLAN 20 里的 VPC2 收不到它。
 
-![](C:\Users\SYUU\AppData\Roaming\Typora\typora-user-images\image-20201230181024954.png)
+实际部署时，通常给不同的业务 VLAN 配不同的 IP 子网，便于通过各自网关做路由。这里把四台主机放在同一个 IP 子网，是为了单独观察二层广播域。
 
-但是当VPC 1 去访问VPC 2 的时候：
+## Access、Trunk 和 Hybrid
 
-![](C:\Users\SYUU\AppData\Roaming\Typora\typora-user-images\image-20201230181100272.png)
+下面用 Cisco 和华为的配置举例，看看 Access、Trunk 和 Hybrid 怎么处理标签。
 
-尽管VPC 1发出了多次ARP Request，但是没人回复它，那是因为VLAN将广播域隔开了，从逻辑上来看，拓扑图似乎变成了这样：
+### Access
 
-![](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20201230181141544.png)
-
-其实就像开头说的那样，VLAN是一种网络虚拟化技术，实现了将交换机基于端口的来分割成多台。上图的VLAN10\20，基于端口的将这四个口分别分割成了两台虚拟交换机（或者像书面那样，虚拟局域网），这样使得这4台电脑就算是同一个子网内，ARP的请求包也无法跨过它们的VLAN，这也就实现了上面说的安全功能。
-
-当然，实际在生产环境中，我们会基于VLAN分配一个网段，比如VLAN 10 会给10.1.1.0/24、VLAN 20 会给20.1.1.0/24，上述的例子只是为了方便演示VLAN隔离广播域的效果。
-
-
-
-### Access、Trunk和Hybrid
-
-我们可以将交换机端口配置成这三种类型：Access、Trunk和Hybrid，它们的作用分别是：
-
-Access：改变端口的Native VLAN，修改后，所有从该端口进入的数据包的Navtie VLAN都会变成Access的那个VLAN，一般连接PC用。
+Access 口通常接普通终端。无标签入站帧归入端口配置的 Access VLAN，发往终端的帧通常不带标签。
 
 ```
 Cisco
@@ -184,38 +164,39 @@ Huawei
 [HUAWEI-GigabitEthernet1/0/1] port default vlan 10
 ```
 
-Trunk：对数据包打上802.1Q的VLAN Tag，然后根据放行的VLAN来允许这些报文通过，一般连接虚拟化服务器和交换机用。
+### Trunk
+
+Trunk 可以承载多个 VLAN，常用来连接交换机或虚拟化主机。Allowed list 决定端口允许哪些 VLAN 通过。在这次 Cisco 802.1Q 实验中，非 Native VLAN 的帧出站带标签，Native VLAN 默认不带标签。
 
 ```
 Cisco
-Switch(config-if)#switch mode trunk
-Switch(config-if)#switch trunk encapsulation dot1q 
-Switch(config-if)#sw trunk allowed vlan 10,20
+Switch(config-if)#switchport trunk encapsulation dot1q
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 10,20
 
 Huawei
 [HUAWEI-GigabitEthernet1/0/2] port link-type trunk
-[HUAWEI-GigabitEthernet1/0/2] port trunk allow-pass vlan 100
+[HUAWEI-GigabitEthernet1/0/2] port trunk allow-pass vlan 10 20
 ```
 
-Hybrid：华为、华三等国产设备独有，可以允许多个VLAN通过，但是打不打VLAN Tag则有用户来决定。
+### Hybrid
+
+以华为为例，Hybrid 口可以按 VLAN 分别指定出站帧带标签还是不带标签，无标签入站帧按端口的 PVID 归类。下面的命令把 VLAN 10 加入出站带标签的列表。
 
 ```
 [HUAWEI] interface gigabitethernet 1/0/3
 [HUAWEI-GigabitEthernet1/0/3] port link-type hybrid
 [HUAWEI-GigabitEthernet1/0/3] port hybrid tagged vlan 10
 ```
+上面的 Cisco 示例在支持选择封装的接口上使用 `switchport trunk encapsulation dot1q`。固定使用 802.1Q 的平台直接配置 Trunk 模式即可。 [Cisco Trunk 配置指南](https://www.cisco.com/c/en/us/td/docs/switches/lan/c9000/lyr2-fwd/vlan/vlan-configuration-guide/configure-vlan-trunks.html) · [华为端口类型说明](https://info.support.huawei.com/info-finder/encyclopedia/en/VLAN.html)
 
+## Native VLAN 和 VLAN 1
 
+在这次 Cisco 实验里，802.1Q Trunk 的默认 Native VLAN 是 VLAN 1。按默认标签行为，Native VLAN 的数据帧出站不带 802.1Q 标签，收到的无标签帧也归入 Native VLAN。把 Native VLAN 改成 10 后，无标签的数据帧就按 VLAN 10 处理。两端的设置要一致。有些平台还能配置 Native VLAN 出站带标签。
 
-### Native VLAN和VLAN 1
+在这类 Cisco 交换机上，VLAN 1 也是二层接入口的默认 VLAN。生产上我会把用户业务与管理流量分开。BPDU、VTP 和 CDP 怎么封装、由哪些端口处理，要分别看协议和设备平台。
 
-
-
-其实当VLAN 1 通过Trunk的时候，如果你抓包会发现报文里面的VLAN字段是空的，那是因为默认的情况下VLAN 1就是Native VLAN，而Native VLAN在通过Trunk的时候就是不打VLAN Tag的。
-
-VLAN 1除了是默认的Native VLAN外，还是Cisco的所有交换机端口的默认VLAN，而且还是Cisco在传递Control Plane Traffic 时候所使用的VLAN，比如生成树的BPDU传递、VTP、CDP等等。所以为了安全，一般不要将VLAN 1分配给PC使用，因为PC使用Wireshark等抓包软件很容就能抓到Control Plane的重要流量。
-
-Navtie VLAN可以通过命令查看、修改：
+下面用 `show interfaces trunk` 查看 Native VLAN，并演示怎么把它设为 VLAN 10。 [Cisco Native VLAN 排障](https://learningnetwork.cisco.com/s/article/implement-and-troubleshoot-trunking)
 
 ```
 Switch#show inter trunk
@@ -231,13 +212,13 @@ interface Ethernet0/0
 
 ```
 
-### 跨交换的VLAN 访问
+## 同一 VLAN 跨交换机访问
 
-我们来完整的做一个实例，通过配置VLAN、ACCESS、TRUNK来实现这4台PC的跨交换机VLAN内互访
+这次用两台交换机做个完整实验。先配 VLAN 和 Access 口，再用 Trunk 把同一个 VLAN 延伸到对端，验证同 VLAN 的主机能否互访。
 
 ![image-20210104155812617](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20210104155812617.png)
 
-1.两台交换机创建相应的本地VLAN
+### 1. 在两台交换机上创建 VLAN
 
 ```
 Switch(config)#vlan 10
@@ -248,7 +229,7 @@ Switch(config-vlan)#name red
 Switch(config-vlan)#exit
 ```
 
-2.将相应的接口使用Access 来划入到各自的VLAN里
+### 2. 分配 Access 端口
 
 ```
 左边的交换机
@@ -278,15 +259,20 @@ Switch(config-if)#no shu
 Switch(config-if)#exit
 ```
 
-3.两台交换机之间的互连接口配置Trunk，并放行VLAN 10 20
+### 3. 配置互联 Trunk
+
+两台交换机之间的互联口都配置成 Trunk，放行 VLAN 10、20，并把两端的 Native VLAN 都设为 10，与下面的实验输出和抓包一致。
 
 ```
-Switch(config-if)#switch mode trunk
-Switch(config-if)#switch trunk encapsulation dot1q 
-Switch(config-if)#sw trunk allowed vlan 10,20
+Switch(config-if)#switchport trunk encapsulation dot1q
+Switch(config-if)#switchport mode trunk
+Switch(config-if)#switchport trunk allowed vlan 10,20
+Switch(config-if)#switchport trunk native vlan 10
 ```
 
-4.验证Trunk的配置状态是Trunking，模式是on。
+### 4. 检查 Trunk 状态
+
+在两端用 `show interfaces trunk` 确认端口处于 trunking 状态、Native VLAN 一致，并检查 VLAN 10、20 是否已放行、处于 active 和 STP forwarding 状态。下面是原实验的状态输出节选。
 
 ```
 Switch#show inter trunk
@@ -295,7 +281,9 @@ Port        Mode             Encapsulation  Status        Native vlan
 Et0/0       on               802.1q         trunking      10
 ```
 
-5.然后，尝试VLAN内互Ping和跨VLAN的互Ping
+### 5. 验证连通性
+
+从 VPC1 分别 ping 同 VLAN 和不同 VLAN 的主机。这个阶段只配置了二层交换，尚未配置跨 VLAN 的三层转发。
 
 ```
 VPC1#ping 10.1.1.2
@@ -310,35 +298,36 @@ Sending 5, 100-byte ICMP Echos to 20.1.1.2, timeout is 2 seconds:
 Success rate is 0 percent (0/5)
 ```
 
-6.在交换机的Trunk口中 抓包，可以清楚看到VLAN ID
+### 6. 抓包对比 VLAN 20 和 Native VLAN 10
+
+在交换机互联的 Trunk 上抓包。第一张图选中的是 VLAN 20 的 ICMP，Wireshark 解出了 802.1Q 标签，VID 为 20。
 
 <img src="https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20210104160805656.png" alt="image-20210104160805656" style="zoom:80%;" />
 
-7.若将VLAN 10设定成Native VLAN，是抓不到有VLAN ID的
+第二张图选中的是 VLAN 10 的 ICMP。同一实验里，VLAN 10 是 Native VLAN，所以这帧没有 802.1Q 标签。两张图对照的是不同 VLAN 的帧。
 
 <img src="https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20210104160850405.png" alt="image-20210104160850405" style="zoom: 80%;" />
 
-### 跨VLAN的访问
+## 跨 VLAN 路由
 
-由于VLAN将广播域分割了，这时候如果我们想要实现跨VLAN访问的时候，就需要有网关来帮我们做转发，试图回想下ARP的内容，我们在跨子网访问的时候同样也需要有网关，这里的道理是一样的。
+前面的实验只做了二层交换。现在让两个 VLAN 互访，主机把跨子网的流量交给默认网关，由网关负责路由。下面分别用单臂路由和三层交换机来做。
 
-实现跨VLAN访问的方法：
+### 1. 单臂路由
 
-1.单臂路由
+简单来说，我用一条 Trunk 把交换机连到路由器，在路由器上为不同 VLAN 配置对应的 802.1Q 子接口。路由器根据目的 IP 查路由，决定从哪个子接口转发；需要时再用 ARP 解析下一跳的 MAC。
 
-简单的来说就是通过交换机和一台带有Layer 3功能的设备互联，使用子接口加Dot1q来区分不同VLAN的数据包，当数据包到达Layer 3设备（通常是路由器）使它自己进行A	RP查表转发。
+这种做法只需要一条物理链路。每个跨 VLAN 数据包都要先从交换机发到路由器，再沿同一条链路的反方向回到交换机。各 VLAN 的跨 VLAN 流量共享这条链路在两个方向上的容量。
 
-它的优点是成本低，实现难度低，缺点是因为要在一条线缆上拆分出多子接口，流量会被平摊掉。
-
-我们来尝试下单臂路由的实验，下图是拓扑图：
+先看单臂路由的拓扑。
 
 <img src="https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20210106165619600.png" alt="image-20210106165619600" style="zoom: 67%;" />
 
-蓝色是VLAN 10、网关在R1上，为10.1.1.254，VPC3 IP 为10.1.1.1，VPC4 IP 为10.1.1.2 
+| VLAN | 主机 IP | R1 网关 |
+| --- | --- | --- |
+| VLAN 10（蓝色） | VPC3 `10.1.1.1`、VPC4 `10.1.1.2` | `10.1.1.254` |
+| VLAN 20（红色） | VPC1 `20.1.1.1`、VPC2 `20.1.1.2` | `20.1.1.254` |
 
-红色是VLAN 20、网关在R1上，为20.1.1.254，VPC1 IP 为20.1.1.1，VPC2 IP 为20.1.1.2 
-
-下面是R1和SW的配置，注意SW上要创建相应的VLAN 10 \ 20，这里就不贴出来了：
+下面是 R1 和 SW 的配置。SW 上先创建 VLAN 10 和 20，并确认 Trunk 的标签配置和路由器子接口一致。VLAN 10 的主机把 `10.1.1.254` 设为默认网关，VLAN 20 的主机则用 `20.1.1.254`。
 
 ```
 R1
@@ -379,19 +368,19 @@ interface Ethernet1/3
  switchport mode access
 ```
 
-当完成后，下面是VPC3 访问同VLAN和跨VLAN时的流量走势，蓝色是VLAN内互访，红色是跨VLAN互访，由于所有跨VLAN访问都要流经SW和R1的路径，而这条路径只有一条，所以叫做”单臂”路由。
+下图是 VPC3 的流量路径。蓝线是同 VLAN 通信，帧由交换机直接转发。红线是跨 VLAN 通信，流量经同一条 Trunk 到 R1，由 R1 路由后再送回交换机。
 
 <img src="https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20210106171122519.png" alt="image-20210106171122519" style="zoom:67%;" />
 
-2.三层交换机起SVI
+### 2. 在三层交换机上配置 SVI
 
-笼统的来说就是给VLAN 上个网关，而这个网关是配置在交换机上，思科叫SVI，华为叫VLANif。这个功能是Layer 2 交换机做不到的，但是现在市面上的交换机一般来说都是支持Layer 3，所以很常见。
+这次我把网关放到交换机上。Cisco 把这样的 VLAN 三层接口叫 SVI，华为叫 VLANIF。有些二层交换机也支持用 SVI 管理设备；能不能让两个 VLAN 通过 SVI 互访，要看平台是否支持并启用了三层路由。
 
-我们来尝试下SVI的实验，下图是拓扑图：
+下面是 SVI 实验的拓扑。
 
 ![image-20210106173147451](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/vlan/image-20210106173147451.png)
 
-基本上的逻辑是一样，只不过我们这次将网关配在了交换机上，所以连R1都不需要了：
+沿用上一个实验的 VLAN 和网关地址，这次把网关配在交换机的 VLAN 接口上。
 
 ```
 interface Ethernet1/0
@@ -417,7 +406,7 @@ interface Vlan20
  ip address 20.1.1.254 255.255.255.0
 ```
 
-配置了SVI后，我们可以通过命令查看接口可以发现有两个VLAN接口被新增到里面了，这就是SVI：
+用 `show ip interface brief` 检查两个 SVI。下面的输出里，`Vlan10` 和 `Vlan20` 都是 `up/up`。
 
 ```
 Switch#show ip inter brief
@@ -430,15 +419,18 @@ Vlan10                 10.1.1.254      YES manual up                    up
 Vlan20                 20.1.1.254      YES manual up                    up   
 ```
 
-注意它的Status和Protocol字段都是“UP”的情况下才算是正常工作，这种我们叫做“双UP”，要使SVI实现“双UP”的前提：
+这里用 `show ip interface brief` 看 SVI 是否为 `up/up`。以实验中的 Cisco Autostate 行为为例，要检查三件事：
 
-1.本地有这个VLAN；
+1. 本机 VLAN 已创建且处于 active 状态。
+2. SVI 本身没有被 shutdown。
+3. 至少有一个参与 Autostate 的二层端口承载该 VLAN，链路为 up，并且在该 VLAN 上处于 STP forwarding 状态。Access 口和放行该 VLAN 的 Trunk 都可以满足这个条件。
 
-2.有放行这个VLAN的物理接口，并且这个物理接口也是“双UP”。
-
-那么，这个情况下就能实现跨VLAN的互访了，当然别忘记了交换机也需要支持Layer 3功能，如果是Cisco或者DELL的交换机，还额外需要加一条命令来开始Layer 3 功能：
+另外，各主机要使用对应 SVI 的 IP 作为默认网关。对这次的 Cisco 实验平台，如果设备尚未启用 IPv4 路由，还需要配置 `ip routing`。其他平台的命令和默认行为以设备文档为准。 [Cisco SVI Autostate](https://www.cisco.com/c/en/us/support/docs/switches/catalyst-6500-series-switches/41141-188.html)
 
 ```
 Switch(config)#ip routing
 ```
 
+## 总结
+
+把这几个实验串起来看，VLAN 解决的是二层广播域怎么划分。主机发来的无标签帧进了 Access 口，交换机按端口配置把它归到对应的 VLAN。同一个 VLAN 要跨交换机，就看 Trunk 有没有放行。带标签的帧按 VID 识别，无标签的帧按两端约定的 Native VLAN 归类。两个 VLAN 要互访，就得经过三层网关，单臂路由用的是路由器的子接口，三层交换机用的是 SVI。排障时也可以照着帧走的路径查，先看进了哪个 VLAN，再看 Trunk 能不能把它送到对端，需要跨 VLAN 时再查网关和路由。
