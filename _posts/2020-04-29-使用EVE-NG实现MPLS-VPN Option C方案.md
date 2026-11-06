@@ -36,7 +36,7 @@ MPLS-VPN Option C 方案的优缺点这里就不提了，直接在实验里回�
 
 PE：每个AS域内与外部客户所连接的路由器，例如vIOS2、vIOS7；
 
-P：不参与MPLS-VPN转发的路由器，例如vIOS3~6；
+P：核心路由器，负责MPLS标签转发，但不需要维护客户的VPN路由，例如vIOS3、vIOS6；
 
 ASBR：和其他AS域互联的路由器，例如vIOS4、vIOS5
 
@@ -64,11 +64,11 @@ CE：代表客户的路由器，例如vIOS1、vIOS8；
 
 ### 5.2. IGP/LDP
 
-这里也略过，毕竟都谈到Option C了，BGP作为TCP路由协议需要依靠IGP来作为底层打通可达才能建立邻居，这一点你该不会不知道吧。
+这里也略过，毕竟都谈到Option C了，BGP运行在TCP之上，建立邻居之前先要保证对等体地址可达；这里用IGP来打通，也可以根据场景使用直连或静态路由，这一点你该不会不知道吧。
 
-所以这里就给每个AS内的三台路由器建立OSPF邻居，并且把环回口、互联口宣告进OSPF进程，但是不需要把两个AS之间的互联口、连接PE的接口也宣告进OSPF。
+所以这里就给每个AS内参与骨干转发的路由器建立OSPF邻居，并且把环回口、互联口宣告进OSPF进程，但是不需要把两个AS之间的互联口、PE连接CE的接口也宣告进OSPF。
 
-同时MPLS的L代表labels，那也就是需要开启LDP协议来分发标签，我想你应该也知道，所以需要在每个启用OSPF的接口上同时启用MPLS IP。
+这里在AS内部使用LDP分发传输标签，所以需要在参与LDP的核心互联接口上启用 `mpls ip`。MPLS本身并不限定必须使用LDP，后面ASBR之间使用的是BGP标签分发。
 
 ```
 MPLS 配置
@@ -80,7 +80,7 @@ interface [接口]
 
 ### 5.3. VRF
 
-两台PE需要建立VRF来接收CE发过来的路由，打上标签后形成VPNV4路由并装入VRF 路由表。fuckstp是VRF的名字，rd10:10 用来区分CE发过来的私网路由，route-target（RT）则用来区分从PE发过来的vpnv4路由，这里由于是代表同一个客户的两个分支点之间的路由，所以RD\RT都是一样。
+两台PE需要建立VRF来接收CE发过来的路由。fuckstp是VRF的名字，客户IPv4路由保存在对应VRF里，导出时结合RD形成VPNv4路由，并携带VPN标签和RT。RD用来区分可能重叠的IPv4前缀，RT决定路由能被哪些VRF导入。这里两端使用相同的RD和RT来简化实验，但同一个VPN不要求各PE使用相同RD，关键是RT的导入、导出策略匹配。
 
 VRF 配置（两台PE R2\R7 配置均一样）
 
@@ -103,6 +103,8 @@ interface GigabitEthernet0/0
 
 CE需要发送路由到PE，可以选择静态路由、IGP 或 BGP，这里选用BGP来和PE建立邻居发送路由
 
+下面命令里的 `#中文说明` 是文章注释，输入设备前要删除。两台PE使用Loopback建立非直连eBGP邻居，所以需要 `ebgp-multihop`；不是所有跨AS邻居都要配它。CE用 `redistribute connected` 是这里的简化写法，实际要控制只发布需要的客户前缀。
+
 ```
 R1
 router bgp 10
@@ -118,7 +120,7 @@ router bgp 10
 #我偷懒将所有直连路由重分发进入BGP，正常应该选择network进行宣告或则重分发IGP路由。
 ```
 
-AS100/200 中的ASBR路由器（R4、R5）配置BGP只需要建立eBGP邻居，但是同时需要和IGP互相重分发来达成两个AS内的路由可达，之后再启动send-labels功能来给BGP分发标签（由于LDP默认是不给BGP路由分发标签的）。
+AS100/200中的ASBR路由器（R4、R5）建立eBGP邻居，并用 `send-label` 交换到远端PE等基础设施前缀的标签信息。这个实验通过BGP和OSPF重分发实现跨AS可达，但并不要求把所有路由都双向倒进去；实际使用时应过滤前缀，避免无关路由泄漏和重分发回灌。VPNv4路由由PE之间交换，ASBR主要负责把传输标签路径接起来。
 
 ```
 R4
@@ -152,7 +154,7 @@ router bgp 200
  exit-address-family
 ```
 
-PE路由器（R2、R7）先和CE路由器（R1、R8）建立基于 VRF 的 eBGP 邻居，接收客户发过来的路由，再互相建立VPNv4邻居来发送VPNv4路由，通过RT（Route Target）来区分客户，该例子中由于是相同客户所以选择一样的RT。
+PE路由器（R2、R7）先和CE路由器（R1、R8）建立基于 VRF 的 eBGP 邻居，接收客户发过来的路由，再互相建立VPNv4邻居来发送VPNv4路由，通过RT（Route Target）控制远端VRF是否导入这些路由，该例子中两端使用匹配的RT导入、导出配置。
 
 ```Cisco
 R2
@@ -295,13 +297,13 @@ Ping和tracert一下~
 
 ![R1](https://l9pepq.bn.files.1drv.com/y4mMbpWHwlu3YAm_oQWyO-6iRS_A-Fu4dSAaUpAv81Qh5p3jD2peWU00smufqDpmOohNPOjbk1s3Z0eUG7qOwXIiiuepM0prsph59LxOcB-y6U7hdp0527OdifIU4uF2_FLOP94nsVktAL6sXI50OEFMkErNde1T1ICddL_ce2MUIg0j60xJGUzm5Hmu27p6D6ow5YUytNg_XTZq5Zd1lYpZw/ping-R8.PNG?psid=1)
 
-从图中的traceroute结果可以得知在报文的传递过程中是含有双重标签的，内层标签一直是“25”，而外层标签一直随着传递的过程而不停改变。
+从图中的traceroute结果可以看到，部分跳上显示了双层标签，内层标签是“25”。这个数值属于当时的实验结果，重建实验后不一定相同，Option C的标签层数也不固定为两层。
 
-标签的分配（R1视角）：
+标签的分配（入口PE R2视角）：
 
-1. 内部标签“25”，由对端 PE 路由器分配并通过VPNv4传递到我方PE路由器上。
-2. 外部标签由本地分配，是目的地的下一跳路由IP的标签，在LDP邻居中互相传递。
+1. 内层VPN标签由对端PE分配，并通过VPNv4路由通告给入口PE。
+2. 外层传输标签要按照到远端PE的标签路径来压入或交换，AS内部这里使用LDP，跨AS的标签信息由ASBR之间的BGP labeled-unicast传递。
 
-由于两个AS之间建立的是EBGP邻居、传递EBGP路由，并且LDP不会为 eBGP 路由分发标签，所以需要使用Send-labels特性使其能够强制传递。本实验的例子中，R1去往目的地8.8.8.8的下一跳地址是7.7.7.7，在两个AS边界的路由器上传递的时候若没启用该特性会导致LSP路径中断而使MPLS网络断开。
+这里要分清下一跳的视角：R1作为CE，去往8.8.8.8的下一跳是本地PE R2；从R2收到的VPNv4路由看，远端PE下一跳才是7.7.7.7。`send-label` 用于通告BGP前缀及其标签绑定，配合域内标签转发形成端到端LSP。
 
-我希望这样表述能让你看懂，Option C的重点就是如何使对方的ASBR路由器能够得知有关目的地的下一跳路由的标签，从而使整条转发路径的LSP能够建立起来。
+我希望这样表述能让你看懂，Option C的重点就是两件事：PE之间交换VPNv4路由，ASBR之间接通到远端PE的标签路径。只有IP可达还不够，转发时对应的标签也得接得上。

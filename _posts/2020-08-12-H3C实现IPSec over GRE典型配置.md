@@ -16,9 +16,9 @@ tags:
 
 # H3C实现IPSec over GRE典型配置
 
-IPSec over GRE 指使用GRE对使用IPSec封装的数据包进行封装，IPSec over GRE在隧道接口上实现IPSec加密。系统检测隧道接口上需要加密的数据流（配置一个ACL来匹配两个用户网段之间的数据流）。匹配ACL的任何数据包都会被封装成IPSec数据包，然后在通过隧道传输之前封装成GRE数据包。与ACL不匹配的数据包会直接在GRE隧道中传输，而不会使用IPSec进行封装，这意味着这些数据包的传输方式并不安全。此外，GRE隧道在设置时不受IPSec保护。
+IPSec over GRE 指使用GRE对使用IPSec封装的数据包进行封装，IPSec over GRE在隧道接口上实现IPSec加密。系统检测隧道接口上需要加密的数据流（配置一个ACL来匹配两个用户网段之间的数据流）。匹配ACL的任何数据包都会被封装成IPSec数据包，然后在通过隧道传输之前封装成GRE数据包。与ACL不匹配的数据包会直接在GRE隧道中传输，而不会使用IPSec进行封装，这意味着这些数据包的传输方式并不安全。这里的外层GRE头也不在这层IPsec的保护范围内。
 
-你可以认为IPSec over GRE的安全性是不全面的，因为它只会加密被ACL所匹配的流量，隧道的建立过程没有加密，没被匹配到的流量不会被加密。
+你可以认为这里的IPsec保护范围由ACL决定，没被匹配到的流量不会被加密。GRE本身没有像IKE那样的安全协商握手，所以不能把它说成“GRE建链过程没有加密”；如果隧道中的OSPF报文没有被ACL匹配，也不会受到这条IPsec策略的保护。
 
 ## 0. 实验环境
 
@@ -134,7 +134,9 @@ interface Tunnel0 mode gre
 
 ## 3. IPSec 配置
 
-两台设备都需要创建ACL抓取需要加密的流量，不然不会触发IPSec加密行为。同时需要注意transform-set的加密和认证参数需要一致， V7设备预共享密钥的配置需要在ike keychain中配置，不同于V5设备。建议在实际生产环境中操作的时候最好直接使用复制粘贴来配置IPSec policy。
+两台设备都需要创建ACL抓取需要加密的流量，不然不会触发IPSec加密行为。同时需要注意transform-set的加密和认证参数需要一致， V7设备预共享密钥的配置需要在ike keychain中配置，不同于V5设备。复制配置时仍要逐项核对本端与对端地址、ACL方向、算法和预共享密钥。
+
+下面的3DES、MD5和示例密钥 `123` 保留为旧实验记录，不作为新部署的配置建议；生产使用要按当前设备支持及安全要求选择算法和密钥。
 
 Router A：
 
@@ -193,7 +195,7 @@ interface Tunnel0 mode gre
 
 ## 5. 验证结果
 
-我们直接ping下，会发现IPSec第一个包都会超时，这是正常的，只要通了那就代表配置没错了。
+我们直接ping下，首次触发IKE/IPsec协商时可能出现超时，但不是第一个包一定会丢。ping通只能说明当时存在可达路径，还要检查IKE/IPsec SA、加解密计数和外部链路抓包，确认指定流量确实受到了保护。
 
 <img src="https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/sdn/image-20200812153509793.png" alt="image-20200812153509793" style="zoom:67%;" />
 
@@ -260,7 +262,7 @@ Interface: Tunnel0
 
 ```
 
-可以通过如下显示信息查看GRE隧道的建立情况。
+可以通过如下显示信息查看GRE接口状态。 下面显示keepalive未启用，接口UP不等于对端可达，也不等于IPsec已经保护了业务。
 
 ```
 [H3C]display interface tunnel0
@@ -292,17 +294,17 @@ GRE封装后，抓包软件仍能识别出里面的 ICMP 报文：
 
 ![image-20200821121125152](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/snd/image-20200821121125152.png)
 
-启用 IPsec 后，抓包显示的是 ESP。
+启用IPsec后，匹配ACL的流量先受IPsec保护，再封装进GRE。外部链路抓包时仍可看到外层GRE，展开后才是里面的ESP；要结合抓包位置和封装层级来看。
 
 ![image-20200821121147484](https://cdn.jsdelivr.net/gh/fuckstp/fuckstp.github.io@master/img/snd/image-20200821121147484.png)
 
 ## 6. 改用GRE over IPSec方案
 
-GRE over IPSec技术是使用IPSec对已经被GRE封装的数据包进行封装。GRE over IPSec在物理接口上实现IPSec加密。系统检测需要在物理接口上加密的GRE数据流（配置一个ACL，以匹配两个网关之间的GRE数据流）。这样一来，所有通过GRE隧道传输的数据流都受到IPSec的保护。GRE隧道在设置时也受到IPSec的保护。
+GRE over IPSec技术是使用IPSec对已经被GRE封装的数据包进行封装。GRE over IPSec在物理接口上实现IPSec加密。系统检测需要在物理接口上加密的GRE数据流（配置一个ACL，以匹配两个网关之间的GRE数据流）。只要ACL匹配了两端之间的GRE流量，并且这些流量实际经过应用策略的出口，GRE内承载的业务和控制报文都可以受到IPsec保护。这里说的是保护GRE封装后的报文，不是给GRE增加一个加密建链过程。
 
-GRE over IPSec支持隧道和传输模式下的封装。在隧道模式下，IPSec数据包头被插入到数据包中。因此，数据包的长度较长，而且往往会被碎片化。建议使用传输模式来防止不必要的碎片。
+GRE over IPsec支持隧道和传输模式。隧道模式会增加新的外层IP头，传输模式在适用条件下可以减少这部分开销，但并不能保证不分片。还要按封装后的实际长度检查路径MTU、DF和PMTUD，必要时调整隧道MTU或TCP MSS。本文保留的SA输出显示 `Encapsulation mode: tunnel`，不能据此当作已经验证了transport模式。
 
-也就是说，只需要在原本的方案上稍微修改下pre-shared-key和remote-address的地址为物理接口IP，并且在物理接口上调用，那就变成GRE先封装，IPSec后封装的方案。
+也就是说，需要把IPsec对端改成两端物理出口地址，在物理出口调用策略，并重新核对ACL。下面是修改后的关键配置片段，不是可以直接覆盖原配置的完整脚本：切换时还要移除Tunnel0上的旧策略引用，清理ACL里的旧用户网段规则，并确认SA按新参数重新建立。示例ACL使用 `permit ip` 匹配两端物理地址，范围比只匹配GRE更宽；如果只想保护GRE，应按所用版本的语法限制协议。
 
 ### 6.1. 配置修改
 
@@ -342,16 +344,18 @@ ipsec transform-set 123
 ipsec policy 123 1 isakmp
  transform-set 123
  security acl 3000
- remote-address 20.1.1.2
+ remote-address 10.1.1.2
 #
 ike keychain 1
- pre-shared-key address 20.1.1.2 255.255.255.255 key simply 123
+ pre-shared-key address 10.1.1.2 255.255.255.255 key simply 123
 #
 interface GigabitEthernet0/0
 ipsec apply policy 123
 ```
 
 ### 6.2 验证结果
+
+> 下面保留当时的验证输出。上面的Router B对端地址已按拓扑修正，但没有据此重新跑一次实验，复现时仍需重新核对两端SA、流量计数与抓包结果。
 
 ```
 [H3C]dis ike sa
