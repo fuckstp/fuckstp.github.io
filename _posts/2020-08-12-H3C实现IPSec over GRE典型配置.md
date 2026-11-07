@@ -12,6 +12,10 @@ tags:
     - GRE
     - VPN
     - 配置案例
+lang: zh-CN
+translation_key: h3c-ipsec-gre
+translation_zh: /2020/08/12/H3C%E5%AE%9E%E7%8E%B0IPSec-over-GRE%E5%85%B8%E5%9E%8B%E9%85%8D%E7%BD%AE/
+translation_en: /en/2020/08/12/h3c-ipsec-gre/
 ---
 
 # H3C实现IPSec over GRE典型配置

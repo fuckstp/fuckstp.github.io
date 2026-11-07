@@ -1,5 +1,5 @@
 (() => {
-  const headings = [...document.querySelectorAll('.post-container h2, .post-container h3, .post-container h4')];
+  const headings = [...document.querySelectorAll('.post-container h2, .post-container h3, .post-container h4, .post-container h5, .post-container h6')];
   const incoming = /^#(?:vlan|article)-section-(\d+)$/.exec(location.hash);
   const destination = incoming && headings[Number(incoming[1]) - 1];
   // Preserve original Jekyll heading IDs and existing incoming Chinese links.

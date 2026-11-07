@@ -9,6 +9,10 @@ catalog: true
 tags:
     - EVE-NG
     - MPLS-VPN
+lang: zh-CN
+translation_key: mpls-vpn-option-c
+translation_zh: /2020/04/29/%E4%BD%BF%E7%94%A8EVE-NG%E5%AE%9E%E7%8E%B0MPLS-VPN-Option-C%E6%96%B9%E6%A1%88/
+translation_en: /en/2020/04/29/mpls-vpn-option-c/
 ---
 
 ## 使用EVE-NG实现MPLS-VPN Option C 方案

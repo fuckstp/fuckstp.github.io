@@ -8,6 +8,10 @@ header-img: img/post-bg-2015.jpg
 catalog: true 						
 tags:								
     - EVE-NG
+lang: zh-CN
+translation_key: nexus-vpc-eve-ng
+translation_zh: /2020/04/26/%E4%BD%BF%E7%94%A8EVE%E5%AE%9E%E7%8E%B0Nexus-vPC-%E5%8A%9F%E8%83%BD/
+translation_en: /en/2020/04/26/nexus-vpc-eve-ng/
 ---
 
 ## 使用EVE实现Nexus vPC 功能
