@@ -57,4 +57,7 @@
     <link rel="alternate" hreflang="en" href="{{ page.translation_en | absolute_url }}">
     <link rel="stylesheet" href="{{ '/css/article-language.css' | relative_url }}">
     {% endif %}
+    {% if page.catalog %}
+    <link rel="stylesheet" href="{{ '/css/compact-catalog.css' | relative_url }}">
+    {% endif %}
 </head>
