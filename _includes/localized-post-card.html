@@ -1,0 +1,25 @@
+{% assign listed_post = include.post %}
+{% if page.lang != 'zh-CN' and listed_post.translation_en %}
+    {% assign english_post = site.pages | where: 'url', listed_post.translation_en | first %}
+    {% if english_post %}{% assign listed_post = english_post %}{% endif %}
+{% endif %}
+<div class="post-preview">
+    <a href="{{ listed_post.url | relative_url }}">
+        <h2 class="post-title">{{ listed_post.title | escape }}</h2>
+        {% if listed_post.subtitle %}
+        <h3 class="post-subtitle">{{ listed_post.subtitle | escape }}</h3>
+        {% endif %}
+        {% if include.summary %}
+        <div class="post-content-preview">{{ listed_post.content | markdownify | strip_html | normalize_whitespace | truncate: 200 | escape }}</div>
+        {% endif %}
+    </a>
+    {% if include.summary %}
+    <p class="post-meta">
+        {% if page.lang == 'zh-CN' %}
+            {{ listed_post.author | default: site.title | escape }} 发布于 {{ include.post.date | date: "%Y-%m-%d" }}
+        {% else %}
+            Posted by {{ listed_post.author | default: site.title | escape }} on {{ include.post.date | date: "%B %-d, %Y" }}
+        {% endif %}
+    </p>
+    {% endif %}
+</div>

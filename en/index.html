@@ -1,0 +1,16 @@
+---
+layout: page
+lang: en
+description: "Thoughts from the control plane."
+permalink: /en/
+translation_key: home
+translation_zh: /zh/
+translation_en: /
+canonical_path: /
+---
+
+{% include article-language.html %}
+{% for post in site.posts %}
+    {% include localized-post-card.html post=post summary=true %}
+    <hr>
+{% endfor %}

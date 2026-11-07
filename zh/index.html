@@ -1,0 +1,15 @@
+---
+layout: page
+lang: zh-CN
+description: "记录网络、系统与排障。"
+permalink: /zh/
+translation_key: home
+translation_zh: /zh/
+translation_en: /
+---
+
+{% include article-language.html %}
+{% for post in site.posts %}
+    {% include localized-post-card.html post=post summary=true %}
+    <hr>
+{% endfor %}

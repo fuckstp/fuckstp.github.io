@@ -1,3 +1,5 @@
+{% assign home_path = '/' %}
+{% if page.lang == 'zh-CN' %}{% assign home_path = '/zh/' %}{% endif %}
 <!-- Navigation -->
 <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
     <div class="container-fluid">
@@ -9,7 +11,7 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <a class="navbar-brand" href="{{ site.baseurl }}/">{{ site.title }}</a>
+            <a class="navbar-brand" href="{{ home_path | relative_url }}">{{ site.title }}</a>
         </div>
 
         <!-- Collect the nav links, forms, and other content for toggling -->
@@ -17,11 +19,15 @@
             <div class="navbar-collapse">
                 <ul class="nav navbar-nav navbar-right">
                     <li>
-                        <a href="{{ site.baseurl }}/">Home</a>
+                        <a href="{{ home_path | relative_url }}">{% if page.lang == 'zh-CN' %}首页{% else %}Home{% endif %}</a>
                     </li>
                     {% for page in site.pages %}{% if page.title and page.hide_nav != true %}
                     <li>
-                        <a href="{{ page.url | prepend: site.baseurl }}">{{ page.title }}</a>
+                        {% if page.url == '/tags/' and home_path == '/zh/' %}
+                        <a href="{{ '/zh/tags/' | relative_url }}">标签</a>
+                        {% else %}
+                        <a href="{{ page.url | relative_url }}">{{ page.title }}</a>
+                        {% endif %}
                     </li>
                     {% endif %}{% endfor %}
                 </ul>

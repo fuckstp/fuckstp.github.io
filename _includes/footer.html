@@ -222,6 +222,6 @@
 {% endif %}
 
 
-{% if page.translation_key %}
+{% if page.translation_key and page.layout == 'post' %}
 <script src="{{ "/js/article-language.js" | relative_url }}?v=3"></script>
 {% endif %}

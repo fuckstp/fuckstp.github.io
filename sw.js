@@ -79,7 +79,7 @@ const getRedirectUrl = (req) => {
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(PRECACHE).then(cache => {
-      return cache.add('offline.html')
+      return cache.add(new Request('offline.html', {cache: 'reload'}))
       .then(self.skipWaiting())
       .catch(err => console.log(err))
     })
