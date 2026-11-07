@@ -173,7 +173,7 @@ a img:focus {
   cursor: zoom-in;
 }
 article {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 blockquote {
   color: #808080;
