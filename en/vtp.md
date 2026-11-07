@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "VTP: How Cisco Switches Share VLANs"
-subtitle: "2021 is almost here, and I'm still looking for my next job."
+subtitle: "VTP modes, revision numbers, and pruning in a three-switch lab"
 date: 2021-01-07
 author: i9u
 header-img: img/EiAbsj4UwAADTNF.jpeg
@@ -19,25 +19,25 @@ tags:
 
 ## Introduction
 
-VTP stands for VLAN Trunking Protocol. Cisco switches use it to share VLAN information over trunk links. If I need the same VLAN on many switches, creating it once sounds a lot easier than making the same change on every switch.
+VTP stands for VLAN Trunking Protocol. Cisco switches use it to share VLAN information over trunk links. A single change can update the VLAN database on many switches.
 
-That convenience works both ways. A VLAN deletion can spread just as quickly as an addition. I used three switches to see what gets shared and what happens when a switch comes back with a higher revision number.
+A VLAN deletion can spread just as quickly as an addition. This lab shows which changes are shared and what happens when a switch joins with a higher revision number.
 
 ## VTP modes
 
-I start with three modes: Server, Client, and Transparent. The server can change the shared VLAN database. A client learns that database. A transparent switch keeps its own VLANs.
+The lab covers three modes: Server, Client, and Transparent. A server can change the shared VLAN database. A client learns that database. A transparent switch keeps its own VLANs.
 
 VTP messages travel over trunks. A VLAN appearing in the database is separate from assigning access ports or allowing that VLAN on a trunk.
 
 ### Lab topology
 
-I use SW1 as the server, SW2 as the client, and SW3 in Transparent mode. The links between them are trunks.
+SW1 is the server, SW2 is the client, and SW3 runs in Transparent mode. The links between them are trunks.
 
 ![Three-switch VTP lab topology](/img/vtp/image-20210107160318708.png)
 
 ### SW1 as the server
 
-SW1 is already in Server mode. I set the domain and lab password to CCIE. Then I check the settings with **show vtp status** and **show vtp password**.
+SW1 is already in Server mode. Set the domain and lab password to CCIE. Verify the settings with **show vtp status** and **show vtp password**.
 
 ```
 Switch(config)#vtp domain CCIE
@@ -73,7 +73,7 @@ Switch#
 
 ### SW2 as the client
 
-I use the same domain and password on SW2 and set it to Client mode.
+Set the same domain and password on SW2, then change its mode to Client.
 
 ```
 SW2(config)#vtp domain CCIE
@@ -103,7 +103,7 @@ MD5 digest                        : 0x14 0x9E 0xBC 0xC0 0x07 0x18 0xAF 0x80
 
 ### SW3 in Transparent mode
 
-I use the same lab settings on SW3, but set it to Transparent mode. Look at the VLAN count and revision. They differ from the values on SW1 and SW2.
+Set the same domain and password on SW3, then change its mode to Transparent. Its VLAN count and revision differ from the values on SW1 and SW2.
 
 ```
 SW3(config)#vtp domain CCIE
@@ -134,11 +134,11 @@ MD5 digest                        : 0x0C 0xF3 0x3A 0x7E 0x13 0x5B 0x17 0x29
 
 ### Read the VTP status
 
-| Field | What I look for |
+| Field | Meaning |
 | --- | --- |
 | Version capable / version running | This switch supports versions 1 through 3. The lab is running version 1. |
 | Domain Name | Switches need to be in the same VTP domain to share their VLAN database. If a password is set, it must match too. |
-| Pruning Mode | Whether VTP pruning is enabled. I test it later. |
+| Pruning Mode | Whether VTP pruning is enabled. |
 | Operating Mode | The role the switch is using. |
 | Maximum VLANs supported locally | This switch reports a local limit of 1005 in the output above. |
 | Number of existing VLANs | How many VLANs are present now, including the defaults. |
@@ -146,7 +146,7 @@ MD5 digest                        : 0x0C 0xF3 0x3A 0x7E 0x13 0x5B 0x17 0x29
 
 ### Check VLAN synchronization
 
-I add VLANs 10, 20, 30, and 1006 on SW1.
+Create VLANs 10, 20, 30, and 1006 on SW1.
 
 ```
 SW1(config)#vlan 10,20,30,1006
@@ -175,7 +175,7 @@ VLAN Name                             Status    Ports
 SW1(config)#
 ```
 
-On SW2, I check what the client learned.
+Run **show vlan brief** on SW2 to check which VLANs it learned.
 
 ```
 SW2#show vlan brief
@@ -212,7 +212,7 @@ SW3(config)#
 
 ### Try a local change on SW2 and SW3
 
-I try to create VLAN 40 on SW2. Client mode rejects the command.
+Try to create VLAN 40 on SW2. Client mode rejects the command.
 
 ```
 SW2(config)#vlan 40
@@ -259,23 +259,23 @@ VLAN Name                             Status    Ports
 
 ### What each mode does
 
-- **Server:** In v1 and v2, I can create, change, and delete VLANs. A server can also learn updates from the domain.
-- **Client:** It can send and receive VTP messages, but I cannot edit its VLAN database locally.
-- **Transparent:** I can edit its local VLANs. It does not apply received VLAN updates or advertise its own database. It can still pass received advertisements along a trunk, depending on the version and platform.
+- **Server:** In v1 and v2, Server mode allows local VLAN changes. A server can also learn updates from the domain.
+- **Client:** A client can send and receive VTP messages. Its VLAN database cannot be edited locally.
+- **Transparent:** Local VLAN changes are allowed. The switch keeps its own database and can pass received advertisements along a trunk, depending on the version and platform.
 
 ## VTP versions
 
-My switches report support for versions 1 through 3, and this lab starts in v1. Check **show vtp status** on your own switch, since defaults and supported features vary.
+The lab switches support versions 1 through 3 and start in v1. Use **show vtp status** to check the running version. Defaults and supported features vary by platform.
 
 ### What changes between versions
 
 V2 adds Token Ring support and can pass along some fields it does not understand. It also changes how Transparent mode relays messages. Check the behavior on your switch before relying on it across different versions.
 
-V3 can advertise extended-range VLANs and share the MST database as a separate feature. For VLAN changes, it adds a primary server role. That gives me a specific switch to make changes on. See the [Cisco VTP configuration guide](https://www.cisco.com/c/en/us/td/docs/switches/lan/c9000/lyr2-fwd/vlan/vlan-configuration-guide/configure-vtp.html) for platform details.
+V3 can advertise extended-range VLANs and share the MST database as a separate feature. The primary server controls changes to the VLAN database. See the [Cisco VTP configuration guide](https://www.cisco.com/c/en/us/td/docs/switches/lan/c9000/lyr2-fwd/vlan/vlan-configuration-guide/configure-vtp.html) for platform details.
 
 ### VTP versions 1 and 2
 
-I use **vtp version 2** to switch the lab to v2. SW1 is at revision 5 in the saved output.
+Run **vtp version 2** to switch the lab to v2. SW1 shows revision 5.
 
 ```
 SW1(config)#vtp version 2
@@ -305,7 +305,7 @@ The trap with v1 and v2 is that Server mode alone does not make SW1's database t
 
 ![Lab topology for testing a higher VTP revision](/img/vtp/image-20210107171959871.png)
 
-I shut down the link to SW2 to isolate it. Then I put SW2 in Server mode and create and delete VLAN 44. Its revision reaches 7.
+Shut down the trunk to isolate SW2. Put SW2 in Server mode, then create and delete VLAN 44. Its revision reaches 7.
 
 ```
 SW2(config)#vtp mo server
@@ -338,7 +338,7 @@ SW2(config)#
 SW2(config)#do show vlan brief 
 ```
 
-I delete VLANs 10, 20, and 30. SW2 now shows revision 8.
+Delete VLANs 10, 20, and 30. SW2 now shows revision 8.
 
 ```
 SW2(config)#no vlan 10,20,30
@@ -398,7 +398,7 @@ MD5 digest                        : 0x27 0x65 0xD7 0x62 0x5B 0x80 0x92 0x18
 
 #### Bring the trunk back and check SW1
 
-I switch SW2 back to Client mode and bring up the trunk.
+Switch SW2 back to Client mode and bring up the trunk.
 
 ```
 SW2(config)#vtp mode client
@@ -474,11 +474,11 @@ MD5 digest                        : 0xC1 0x6D 0x2C 0x75 0x47 0xE9 0xA2 0x0A
                                     0xD9 0xF8 0xC9 0x5D 0x3A 0xDA 0x64 0x1B 
 ```
 
-Before connecting a reused switch to a v1 or v2 domain, I check its VLAN database and revision while it is isolated. I verify the reset on the actual device before bringing up the trunk.
+Before connecting a reused switch to a v1 or v2 domain, check its VLAN database and revision while the switch is isolated. Verify that the revision has reset before bringing up the trunk.
 
 ### VTP version 3
 
-I use the same topology to try v3.
+The v3 test uses the same topology.
 
 ![Three-switch VTP version 3 lab topology](/img/vtp/image-20210107175316086.png)
 
@@ -537,7 +537,7 @@ SW1(config)#
 
 #### Make SW1 the VLAN primary server
 
-I try to create VLAN 10 while SW1 is a server but has not taken the primary role. The switch refuses.
+SW1 is in Server mode but has yet to take the primary role. The switch rejects the attempt to create VLAN 10.
 
 ```
 SW1(config)#vlan 10
@@ -547,7 +547,7 @@ SW1(config)#
 
 ```
 
-I run **vtp primary vlan** from the privileged EXEC prompt, enter the VTP password, and confirm the takeover. SW1 can now make changes to the domain's VLAN database.
+From the privileged EXEC prompt, run **vtp primary vlan**, enter the VTP password, and confirm the takeover. SW1 can now update the domain’s VLAN database.
 
 ```
 SW1#vtp primary vlan
@@ -564,7 +564,7 @@ imary server for the VLAN VTP feature
 
 An allowed VLAN list tells the switch which VLANs may use a trunk. VTP pruning works within that list. It saves bandwidth by keeping unnecessary flooded traffic off links where it is not needed.
 
-For example, I can use VLAN 10 in the office and VLAN 20 in the industrial building. Both switches may know about both VLANs. That does not mean the industrial building needs to receive every VLAN 10 broadcast.
+Consider an office using VLAN 10 and an industrial building using VLAN 20. Both switches may know about both VLANs. Pruning can keep VLAN 10 broadcasts off the trunk to the industrial building when that branch does not need them.
 
 ### Pruning lab topology
 
@@ -582,7 +582,7 @@ With pruning enabled, switches use VTP Join messages to signal which eligible VL
 
 ### Enable pruning
 
-For this v2 test, I enable **vtp pruning** on the server. In v1 and v2 it is a domain setting for participating switches. V3 requires enabling it on each device. The saved status shows SW1 enabled and SW2 in Transparent mode with pruning disabled, so I use the port output below to check the actual result.
+For this v2 test, enable **vtp pruning** on the server. In v1 and v2 it is a domain setting for participating switches. V3 requires enabling it on each device. The saved status shows SW1 enabled and SW2 in Transparent mode with pruning disabled. The port output below shows the result on each trunk.
 
 ```
 SW1(config)#do show vtp status
@@ -628,7 +628,7 @@ MD5 digest                        : 0xB4 0xFD 0xF7 0x39 0x3B 0xE6 0x94 0xFF
 
 ### Check the trunk and pruning status
 
-I use **show interfaces pruning** to see which VLANs were pruned on each link. The two columns in the output describe opposite directions: what the neighbor did not request, and what this switch requested from the neighbor.
+Run **show interfaces pruning** to check each link. The output shows two directions: which VLANs the neighbor did not request, and which VLANs the local switch requested from the neighbor.
 
 ```
 SW1#show inter pruning
@@ -678,8 +678,8 @@ Et0/0               1,20
 
 ```
 
-## A note from production
+## Production considerations
 
-When I first learned VTP, I liked that I could add a VLAN by touching one switch. It took me a while to realize how easily I could delete it everywhere, too. A lot of us learned that one the hard way.
+VTP can distribute additions and deletions across the domain. With v1 or v2, verify the revision and VLAN database on any reused switch before connecting it to a production trunk.
 
-These days we usually leave VTP off in production. Creating a VLAN takes a few more commands, but I know exactly which switches I'm changing.
+Managing VLANs locally requires more configuration, but it keeps the scope of each change explicit. Where VTP is required, define which switch can change the shared database and verify the result on the affected trunks.
