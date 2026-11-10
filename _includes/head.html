@@ -1,4 +1,17 @@
 <head>
+    {% if page.translation_key == 'home' %}
+    <script>
+    (function () {
+        var banners = [
+            {{ '/img/banners/moon.webp?v=8fbe151' | relative_url | jsonify }},
+            {{ '/img/banners/akihabara-night.webp?v=8fbe151' | relative_url | jsonify }},
+            {{ '/img/banners/galaxy.webp?v=8fbe151' | relative_url | jsonify }}
+        ];
+        var banner = banners[Math.floor(Math.random() * banners.length)];
+        document.documentElement.style.setProperty('--home-banner', 'url("' + banner + '")');
+    })();
+    </script>
+    {% endif %}
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
