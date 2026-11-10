@@ -47,7 +47,7 @@ iperf -s -u -B 10.10.10.21 -p 5000 -i 1
 iperf -c 10.10.10.21 -u -B 10.10.10.10 -p 5000 -b 64k -l 256 -t 15
 ```
 
-![Multicast lab topology](/img/hft-mcast-01/mcast-1.png)
+![Multicast lab topology](/img/hft-mcast-01/mcast-1.png?v=ff15f75a2f92)
 *Figure 2. Sender sent the UPD traffic to a unicast address.*
 
 
