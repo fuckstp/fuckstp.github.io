@@ -26,7 +26,7 @@ I wanted to brush up on multicast, so back to the simplest setup I could think o
 I used three Alpine hosts and one unmanaged switch in CML. The hosts take 512 MiB each, so that's 1.5 GiB for the three guests. Four nodes fit easily within my CML Personal limit. Alpine already had iPerf 2 and `tcpdump`, so the setup was pretty quick.
 
 ![Multicast lab topology](/img/hft-mcast-01/topology.png)
-*Figure 1. Lab topology.*
+*Figure 0. Lab topology.*
 
 Put all three interfaces in `10.10.10.0/24` and added `ip route replace 224.0.0.0/4 dev eth0` inside the lab. The addresses in the diagram are enough to reproduce the setup. The channel I made up for this test uses source `10.10.10.10`, group `239.10.10.1`, and UDP destination port `5000`.
 
@@ -34,6 +34,8 @@ Put all three interfaces in `10.10.10.0/24` and added `ip route replace 224.0.0.
 
 Pinged `.21` and `.22` from the source first. Make sure unicast can reachable is the basic of the basic.
 ![Multicast lab topology](/img/hft-mcast-01/ping.png)
+*Figure 1. A little ping test.*
+
 
 Then started a UDP listener on FH-1 and sent 15 seconds of traffic directly to it. Pretty standard stuff, but now I have a baseline if the multicast test gives me nothing.
 
