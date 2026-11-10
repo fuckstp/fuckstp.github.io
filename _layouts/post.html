@@ -65,6 +65,53 @@ layout: default
 
                 {{ content }}
 
+                {% assign share_url = page.url | absolute_url %}
+                <div class="article-share" id="article-share" role="group" aria-label="{% if page.lang == 'zh-CN' %}分享这篇文章{% else %}Share this article{% endif %}">
+                    <span class="article-share-label">{% if page.lang == 'zh-CN' %}分享这篇文章{% else %}Share this article{% endif %}</span>
+                    <a class="article-share-linkedin" href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url | url_encode }}" target="_blank" rel="noopener noreferrer" aria-label="{% if page.lang == 'zh-CN' %}分享到 LinkedIn{% else %}Share on LinkedIn{% endif %}"><i class="fa fa-linkedin" aria-hidden="true"></i> LinkedIn</a>
+                    <a class="article-share-x" href="https://x.com/intent/tweet?text={{ page.title | url_encode }}&amp;url={{ share_url | url_encode }}" target="_blank" rel="noopener noreferrer" aria-label="{% if page.lang == 'zh-CN' %}分享到 X{% else %}Share on X{% endif %}"><span aria-hidden="true">𝕏</span> X</a>
+                    <button type="button" class="article-share-copy" data-url="{{ share_url | escape }}"><i class="fa fa-link" aria-hidden="true"></i> {% if page.lang == 'zh-CN' %}复制链接{% else %}Copy link{% endif %}</button>
+                    <span class="article-share-status" role="status" aria-live="polite"></span>
+                    <input class="article-share-fallback" type="text" value="{{ share_url | escape }}" readonly hidden aria-label="{% if page.lang == 'zh-CN' %}文章链接{% else %}Article link{% endif %}">
+                </div>
+                <style>
+                    .article-share { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 40px 0 20px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+                    .article-share a, .article-share button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: inherit; font: inherit; text-decoration: none; background: none; border: 0; padding: 0; cursor: pointer; }
+                    .article-share .article-share-linkedin:hover { color: #0a66c2; }
+                    .article-share .article-share-x:hover { color: #111; }
+                    .article-share .article-share-copy:hover { color: #0085a1; }
+                    .article-share a:focus-visible, .article-share button:focus-visible { outline: 2px solid #0085a1; outline-offset: 4px; }
+                    .article-share-status { font-size: 13px; }
+                    .article-share-fallback { width: 100%; font: inherit; padding: 8px; }
+                    .article-share-fallback[hidden] { display: none; }
+                </style>
+                <script>
+                (function () {
+                    var group = document.getElementById('article-share');
+                    var button = group.querySelector('.article-share-copy');
+                    var status = group.querySelector('.article-share-status');
+                    var fallback = group.querySelector('.article-share-fallback');
+                    var isChinese = {{ page.lang | default: 'en' | jsonify }} === 'zh-CN';
+                    function copyManually() {
+                        fallback.hidden = false;
+                        fallback.focus();
+                        fallback.select();
+                        status.textContent = isChinese ? '请复制下方链接' : 'Select and copy the link below';
+                    }
+                    button.addEventListener('click', function () {
+                        if (!navigator.clipboard || !navigator.clipboard.writeText) {
+                            copyManually();
+                            return;
+                        }
+                        navigator.clipboard.writeText(button.getAttribute('data-url')).then(function () {
+                            fallback.hidden = true;
+                            status.textContent = isChinese ? '已复制链接' : 'Link copied';
+                        }).catch(copyManually);
+                    });
+                })();
+                </script>
+
+
                 <hr style="visibility: hidden;">
 
                 <ul class="pager">
