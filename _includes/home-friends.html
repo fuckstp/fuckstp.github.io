@@ -1,7 +1,7 @@
 {% if page.translation_key == 'home' and site.data.home_friends %}
 <section aria-labelledby="friends-heading">
     <hr>
-    <h5 id="friends-heading">{% if page.lang == 'zh-CN' %}友情連結{% else %}FRIENDS{% endif %}</h5>
+    <h5 id="friends-heading">Blogroll</h5>
     <ul class="list-unstyled">
         {% for friend in site.data.home_friends %}
         <li><a href="{{ friend.url | escape }}" target="_blank" rel="noopener noreferrer">{{ friend.name | escape }}</a></li>
