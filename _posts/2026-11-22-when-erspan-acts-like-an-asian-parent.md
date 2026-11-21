@@ -274,7 +274,9 @@ The source doesn't negotiate with the destination before sending mirrored traffi
 
 At least you can argue with your parents. With ERSPAN, you'd better fix the configuration.
 
-*AI tools were used to help correct grammar and spelling in this article.*
+> [!NOTE]
+>
+> *AI tools were used to help correct grammar and spelling in this article.*
 
 ## References
 
