@@ -15,17 +15,17 @@ tags:
 
 ## What We Found 
 
-Well, this is a little human mistake in the project implementation phase .We have large campus network project ongoing , one of our engineer is response to pre-config the ERSPAN function in each building distribute switch to capture the traffic that come form the access level switch then send to core switch which connected to a monitor platform.
+Well, this is a little human mistake in the project implementation phase .We have large campus network project ongoing , One of our engineers was responsible for preconfiguring the ERSPAN function in the distribution switches in each building to capture the traffic that come form the access switch then send to the core switch, which was connected to a monitoring platform.
 
-After day by a day this green field become to production stage , more and more traffic came from the access layer. Then in one day we found the core switch have a high CPU utilization alarm in the log buff , even the SSH remote control be come jitter and delay.
+As the greenfield campus gradually went into production , more and more traffic came from the access layer. Then one day, we noticed a high CPU utilization alarm in the core switch’s log buffer, Even the SSH session became sluggish and unresponsive.
 
-We use "monitor capture" to see what kind of traffic is sent to the device and noticed these traffics is coming from each distribute switch and the packet looks like very normal which destination IP is core switch. 
+We use "monitor capture" to see what kind of traffic is sent to the device and noticed these traffics was coming from each distribute switch and the packet looks like very normal which destination IP is core switch. 
 
-In the first place we confusing is the core switch performance can not handle such ERSPAN made it high CPU ? So we checked the Cisco ERSPAN guide and that is said ERSPAN traffic doesn't offload by the CPU level ... Humm.. make senses....
+At first, we wondered is the core switch performance can not handle such ERSPAN made it high CPU ? So we checked the Cisco ERSPAN guide and that is said ERSPAN traffic doesn't offload by the CPU level ... Humm.. that make senses....
 
 ## Two source sessions, one matching ID
 
-So , looks like don't know what reason to make this happen , then we started to review a few switches ERSPAN config snippet , like this:
+So , We still couldn't explain the high CPU utilization, so we started reviewing the ERSPAN configurations on a few switches , like this:
 
 | Core Switch      | Distribute Switch |
 | ----------- | ----------- |
@@ -33,21 +33,21 @@ So , looks like don't know what reason to make this happen , then we started to 
 
 
 
-Ok , in the distribution switch we found there is two monitor session on it with difference erspan-id . After we remove the named is test one , show CPU utilization in the core switch is coming to cut back on.
+Ok , in the distribution switch we found there are two monitor sessions on it with difference erspan-id . After we remove the named is test one , show CPU utilization in the core switch is coming to cut back on.
 
 
 
 ## What still needs verification
 
-Why the ERSPAN traffic will send to the CPU if there is not ERSPAN-ID match ? I check the Configuration Guide again and there is note in it:
+Why the ERSPAN traffic will send to the CPU if there is not ERSPAN-ID match ? I checked the Configuration Guide again and found is note in it:
 
 > Because encapsulation and decapsulation are performed in the hardware, the CPU performance is not impacted.
 
-ERSPAN use GRE tunnel to encapsulate the traffic to the destination and decapsulate by hardware , the reason we assumed the device doesn't use hardware offload which is didn't identify the traffic is coming from the ERSPAN session and how to identify the ERSPAN session (or tunnel) is by the ERSPAN-ID , below is the ERSPAN-ID purpose explant in configuration:
+ERSPAN use GRE tunnel to encapsulate the traffic to the destination and decapsulate by hardware , the reason we assumed the device doesn't use hardware offload which is didn't identify the traffic is coming from the ERSPAN session and how to identify the ERSPAN session (or tunnel) is by the ERSPAN-ID , below is the description of the ERSPAN ID in configuration:
 
 > Configures the ID used by source and destination sessions to identify the ERSPAN traffic, which must also be entered in the ERSPAN destination session configuration.
 
-If destination device didn't identify the ERSPAN traffic , which mean it will accept all these traffics and send to CPU due to the GRE tunnel outer IP is itself. But is this the really root cause ? or just a assumption.
+If destination device didn't identify the ERSPAN traffic , which mean it will accept all these traffics and send to CPU due to the GRE tunnel outer IP is itself. But is this the actual root cause ? or just an assumption.
 
 
 
@@ -55,13 +55,13 @@ If destination device didn't identify the ERSPAN traffic , which mean it will ac
 
 On this section , I will try to reproducing this mistake in my CML lab and I don't think we can 100% reproducing due to a virtual device doesn't have hardware to "hardware offload" , right?
 
-But I think if the ERPSAN-ID mis match is the root cause of this incident , in the Lab we should see two ERSPAN streams coming from the ERSPAN Source in the Destination.
+But I think if the ERPSAN-ID mis match is the root cause of this incident , in the Lab we should see two ERSPAN streams coming from the ERSPAN Source at the Destination.
 
 Here is the diagram :
 
 ![erspan-diagram](/img/erspan/erspan-diagram.png)
 
-*Figure 1. Lab diagram.*
+
 
 
 
