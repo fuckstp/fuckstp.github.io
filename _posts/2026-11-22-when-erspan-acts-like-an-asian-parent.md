@@ -265,7 +265,7 @@ Final, here are three things I took away from this lab：
 
 In the other hand , the source device doesn't have a mechanism to negotiate with the destination before build up the GRE tunnel. So the outcome is the source switch just send the span traffic to destination whatever it want or not , like your Asian parent said all the thing then done just in the name of help , but at least you can argue with your parents. With ERSPAN, you'd better fix the configuration.
 
-That also brought me back to Cisco's advice to configure and verify the destination session before enabling the source. :
+That also brought me back to Cisco's advice to configure and verify the destination session before enabling the source :
 
 > To avoid over-subscription of traffic, which can lead to drop in management traffic on the destination device, ensure that the destination session is configured and is working on the destination device, before configuring a source session on the source device.
 
