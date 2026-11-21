@@ -6,7 +6,9 @@ subtitle: "A little too much traffic, all in the name of helping."
 date: 2026-11-22 00:00:00 +0800
 permalink: /2026/11/22/when-erspan-acts-like-an-asian-parent/
 author: i9u
-header-img: img/post-bg-desk.png
+# Header photo: Annushka Ahuja / Pexels https://www.pexels.com/photo/mother-serving-food-to-her-family-8054784/
+header-img: img/erspan/header-family-dinner-annushka-ahuja.jpg
+header-mask: 0.35
 catalog: true
 tags:
   - Cisco
