@@ -4,6 +4,7 @@ layout: post
 title: "When ERSPAN Acts Like an Asian Parent"
 subtitle: "A little too much traffic, all in the name of helping."
 date: 2026-11-22 00:00:00 +0800
+permalink: /2026/11/22/when-erspan-acts-like-an-asian-parent/
 author: i9u
 header-img: img/post-bg-desk.png
 catalog: true
