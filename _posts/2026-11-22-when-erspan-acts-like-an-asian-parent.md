@@ -259,19 +259,20 @@ I looked up what the four actions under Packets Processed mean:
 | **Drop / DROP**    | The forwarding processor drops the packet, usually with a reason code. | Traffic with ERSPAN ID 102 showed `DROP 162 (Erspan)`.       |
 | **Consume / CONS** | A feature consumes the packet during processing, ending that packet's processing path. | Cisco gives examples involving ICMP and cryptographic processing. The detailed trace is needed to understand a specific case. |
 
-Final, here are three things I took away from this lab：
+Final, here are two things I took away from this lab：
 
-1. if ERSPAN destination wasn't configured in destination device , it will dropped these traffics.
-2. Destination can identify the traffic which is the ERSPAN even without a matching destination session .
-3. In this lab we couldn't reproduce the phenomenon , the platform and software version may matter.
+1. On this CSR1000v, CORE dropped traffic with ERSPAN ID 102 when its matching destination session was missing..
+2. CORE could still recognize those packets as ERSPAN, even without a matching destination session .
 
-In the other hand , the source device doesn't have a mechanism to negotiate with the destination before build up the GRE tunnel. So the outcome is the source switch just send the span traffic to destination whatever it want or not , like your Asian parent said all the thing then done just in the name of help , but at least you can argue with your parents. With ERSPAN, you'd better fix the configuration.
+Unfortunately, I couldn't reproduce the high CPU behavior we saw in production. The lab trace showed ERSPAN drops and no punt to the control plane. The platform and software version may matter, but that still needs verification. .
 
-That also brought me back to Cisco's advice to configure and verify the destination session before enabling the source :
+That left me with another question. If the destination can recognize unmatched ERSPAN packets and drop them, why does Cisco specifically warn about the impact on management traffic when the destination session isn't ready? What happens on the physical switch under those conditions?
 
 > To avoid over-subscription of traffic, which can lead to drop in management traffic on the destination device, ensure that the destination session is configured and is working on the destination device, before configuring a source session on the source device.
 
+The source doesn't negotiate with the destination before sending mirrored traffic. Once enabled, it keeps sending whether the destination is ready or not. A little like an Asian parent, sending everything your way, all in the name of helping.
 
+At least you can argue with your parents. With ERSPAN, you'd better fix the configuration.
 
 *AI tools were used to help correct grammar and spelling in this article.*
 
