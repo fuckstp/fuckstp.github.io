@@ -9,13 +9,15 @@ author: i9u
 header-img: img/post-bg-desk.png
 catalog: true
 tags:
+  - Cisco
   - ERSPAN
+  - CML
   - Network Troubleshooting
 ---
 
 ## What We Found 
 
-Well, this is a little human mistake in the project implementation phase .We have large campus network project ongoing , One of our engineers was responsible for preconfiguring the ERSPAN function in the distribution switches in each building to capture the traffic that come form the access switch then send to the core switch, which was connected to a monitoring platform.
+Well, this is a small configuration mistake in the project implementation phase .We were working on a large campus network project , one of our engineers was responsible for preconfiguring the ERSPAN function in the distribution switches in each building to capture the traffic that come form the access switch then send to the core switch, which was connected to a monitoring platform.
 
 As the greenfield campus gradually went into production , more and more traffic came from the access layer. Then one day, we noticed a high CPU utilization alarm in the core switch’s log buffer, Even the SSH session became sluggish and unresponsive.
 
